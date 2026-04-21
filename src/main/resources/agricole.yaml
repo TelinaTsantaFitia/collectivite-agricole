@@ -1,196 +1,346 @@
 openapi: 3.0.3
 info:
-  title: API Fédération de Collectivités Agricoles de Madagascar
-  description: API de gestion des processus administratifs, de la trésorerie et de l'assiduité.
-  version: 1.0.0
+  title: Federation Agricole API
+  version: 2.0.0
 
 servers:
-  - url: 'https://localhost:8080'
-
-tags:
-  - name: Collectivités (A)
-    description: Gestion de l'ouverture et du cycle de vie des collectivités.
-  - name: Membres (B)
-    description: Gestion des adhésions, parrainages et profils.
-  - name: Trésorerie (C & D)
-    description: Gestion des cotisations, comptes bancaires et mobile money.
-  - name: Activités & Assiduité (E & F)
-    description: Planification des événements et suivi des présences.
-  - name: Statistiques (G)
-    description: Rapports de performance et taux d'assiduité.
-
-paths:
-  /collectivites:
-    post:
-      tags: [Collectivités (A)]
-      summary: Demander l'ouverture d'une nouvelle collectivité
-      description: Nécessite 10 membres dont l'antériorité > 6 mois et les postes spécifiques occupés.
-      responses:
-        201:
-          description: Collectivité créée avec succès.
-    get:
-      tags: [Collectivités (A)]
-      summary: Lister les collectivités existantes
-      responses:
-        200:
-          description: Liste des collectivités.
-
-
-  /membres:
-    post:
-      tags: [Membres (B)]
-      summary: Adhésion d'un nouveau membre
-      description: Nécessite un parrain (membre confirmé > 90j) et preuve de paiement (50.000 MGA).
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/MembreInput'
-      responses:
-        201:
-          description: Membre inscrit en attente de validation.
-
-  /membres/{membreId}/transfert:
-    patch:
-      parameters:
-        - name: membreId
-          in: path
-          required: true
-          schema: { type: string }
-      responses:
-        200:
-          description: Transfert effectué.
-
-
-  /collectivites/{collId}/cotisations:
-    post:
-      tags: [Trésorerie (C & D)]
-      summary: Enregistrer une cotisation (périodique ou ponctuelle)
-      parameters:
-        - name: collId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/Paiement'
-      responses:
-        201:
-          description: Paiement enregistré.
-
-  /collectivites/{collId}/comptes:
-    get:
-      tags: [Trésorerie (C & D)]
-      summary: État de la trésorerie (Caisse, Banque, Mobile Money)
-      responses:
-        200:
-          description: Liste des comptes et soldes actuels.
-
-
-  /activites:
-    post:
-      tags: [Activités & Assiduité (E & F)]
-      summary: Créer une activité (AG, Formation, Exceptionnelle)
-      responses:
-        201:
-          description: Activité planifiée.
-
-  /activites/{activiteId}/presence:
-    post:
-      tags: [Activités & Assiduité (E & F)]
-      summary: Enregistrer la feuille de présence (Secrétaire)
-      parameters:
-        - name: activiteId
-          in: path
-          required: true
-          schema: { type: string }
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: array
-              items:
-                $ref: '#/components/schemas/PointagePresence'
-      responses:
-        200:
-          description: Présences enregistrées.
-
-
-  /stats/collectivite/{collId}/rapport-mensuel:
-    get:
-      tags: [Statistiques (G)]
-      summary: Générer le rapport mensuel pour la fédération
-      responses:
-        200:
-          description: Taux d'assiduité global et nombre de membres.
-
-  /stats/membres/{membreId}/performance:
-    get:
-      tags: [Statistiques (G)]
-      summary: Statistiques détaillées d'un membre
-      parameters:
-        - name: debut
-          in: query
-          schema: { type: string, format: date }
-        - name: fin
-          in: query
-          schema: { type: string, format: date }
-      responses:
-        200:
-          description: Taux d'assiduité, montants payés et impayés.
+  - url: http://localhost:8080/api
 
 components:
   schemas:
-    MembreInput:
-      type: object
-      properties:
-        nom: { type: string }
-        prenom: { type: string }
-        dateNaissance: { type: string, format: date }
-        genre: { type: string, enum: [Masculin, Féminin] }
-        adresse: { type: string }
-        metier: { type: string }
-        telephone: { type: string }
-        email: { type: string, format: email }
-        parrainId: { type: string }
-        modePaiementAdhesion: { type: string, enum: [MobileMoney, Virement] }
 
-    Paiement:
+    Collectivite:
       type: object
+      required: [nom, ville, specialite]
       properties:
-        membreId: { type: string }
-        montant: { type: number, example: 50000 }
-        devise: { type: string, default: "MGA" }
-        date: { type: string, format: date-time }
-        type: { type: string, enum: [Mensuel, Annuel, Ponctuel] }
-        mode: { type: string, enum: [Espece, Virement, MobileMoney] }
-
-    PointagePresence:
-      type: object
-      properties:
-        membreId: { type: string }
-        statut: { type: string, enum: [Present, Absent, Excuse] }
-        motifAbsence: { type: string }
-        estVisiteur: { type: boolean, description: "Si vrai, ne compte pas pour l'assiduité annuelle" }
-
-    CompteBancaire:
-      type: object
-      properties:
-        titulaire: { type: string }
-        banque: { type: string, enum: [BRED, MCB, BMOI, BOA, BGFI, AFG, ACCES BANQUE, BAOBAB, SIPEM] }
-        rib:
+        id:
+          type: integer
+        nom:
           type: string
-          pattern: '^[0-9]{23}$'
-          description: "BBBBB GGGGG CCCCCCCCCCC KK"
+        ville:
+          type: string
+        specialite:
+          type: string
+        dateCreation:
+          type: string
+          format: date
 
-    CompteMobileMoney:
+    Parrain:
+      type: object
+      required: [membreId, relation]
+      properties:
+        membreId:
+          type: integer
+        collectiviteId:
+          type: integer
+        relation:
+          type: string
+
+    Membre:
+      type: object
+      required: [nom, prenom, dateNaissance, genre, telephone, email]
+      properties:
+        id:
+          type: integer
+        nom:
+          type: string
+        prenom:
+          type: string
+        dateNaissance:
+          type: string
+          format: date
+        genre:
+          type: string
+          enum: [M, F]
+        adresse:
+          type: string
+        metier:
+          type: string
+        telephone:
+          type: string
+        email:
+          type: string
+        dateAdhesion:
+          type: string
+          format: date
+        parrains:
+          type: array
+          items:
+            $ref: '#/components/schemas/Parrain'
+
+    AdmissionRequest:
+      type: object
+      required: [membre, montantAdhesion, montantCotisation]
+      properties:
+        membre:
+          $ref: '#/components/schemas/Membre'
+        montantAdhesion:
+          type: number
+          example: 50000
+        montantCotisation:
+          type: number
+          example: 200000
+
+    Cotisation:
       type: object
       properties:
-        titulaire: { type: string }
-        service: { type: string, enum: [Orange Money, Mvola, Airtel Money] }
-        telephone: { type: string }
+        montant:
+          type: number
+        date:
+          type: string
+          format: date
+        modePaiement:
+          type: string
+          enum: [ESPECE, MOBILE_MONEY, VIREMENT]
+
+    Compte:
+      type: object
+      properties:
+        type:
+          type: string
+          enum: [CAISSE, BANCAIRE, MOBILE]
+        titulaire:
+          type: string
+        banque:
+          type: string
+        numeroCompte:
+          type: string
+        telephone:
+          type: string
+        solde:
+          type: number
+
+    Activite:
+      type: object
+      properties:
+        id:
+          type: integer
+        type:
+          type: string
+        obligatoire:
+          type: boolean
+        date:
+          type: string
+          format: date
+
+    Presence:
+      type: object
+      properties:
+        membreId:
+          type: integer
+        present:
+          type: boolean
+        excuse:
+          type: boolean
+
+    StatistiqueMembre:
+      type: object
+      properties:
+        tauxAssiduite:
+          type: number
+        montantPaye:
+          type: number
+        montantImpayes:
+          type: number
+
+    StatistiqueCollectivite:
+      type: object
+      properties:
+        tauxAssiduiteGlobal:
+          type: number
+        nombreMembres:
+          type: integer
+
+    StatistiqueFederation:
+      type: object
+      properties:
+        collectiviteId:
+          type: integer
+        tauxAssiduiteGlobal:
+          type: number
+        pourcentageCotisationAJour:
+          type: number
+        nouveauxAdherents:
+          type: integer
+
+paths:
+
+  # A - Collectivite
+  /collectivites:
+    post:
+      summary: Creer collectivite
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Collectivite'
+      responses:
+        201:
+          description: OK
+        400:
+          description: Conditions non respectees
+
+  # B - Admission ( B-2)
+  /collectivites/{id}/admissions:
+    post:
+      summary: Admission nouveau membre (avec nouvelles regles)
+      parameters:
+        - name: id
+          in: path
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdmissionRequest'
+      responses:
+        201:
+          description: Membre admis
+        400:
+          description: Conditions non respectees (parrainage, paiement...)
+
+  # changement collectivite / demission
+  /membres/{id}/changer-collectivite:
+    put:
+      summary: Changer de collectivite
+      parameters:
+        - name: id
+          in: path
+          required: true
+      responses:
+        200:
+          description: OK
+
+  /membres/{id}/demission:
+    put:
+      summary: Demission membre
+      parameters:
+        - name: id
+          in: path
+          required: true
+      responses:
+        200:
+          description: OK
+
+  # C - Cotisations
+  /collectivites/{id}/cotisations:
+    post:
+      summary: Ajouter cotisation
+      parameters:
+        - name: id
+          in: path
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Cotisation'
+      responses:
+        201:
+          description: OK
+
+  # D - Comptes
+  /collectivites/{id}/comptes:
+    post:
+      summary: Ajouter compte
+      parameters:
+        - name: id
+          in: path
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Compte'
+      responses:
+        201:
+          description: OK
+
+    get:
+      summary: Liste comptes
+      responses:
+        200:
+          description: OK
+
+  # E - Activites
+  /collectivites/{id}/activites:
+    post:
+      summary: Creer activite
+      parameters:
+        - name: id
+          in: path
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activite'
+      responses:
+        201:
+          description: OK
+
+  /federation/activites:
+    post:
+      summary: Activite federation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activite'
+      responses:
+        201:
+          description: OK
+
+  # F - Presence
+  /activites/{id}/presences:
+    post:
+      summary: Enregistrer presence
+      parameters:
+        - name: id
+          in: path
+          required: true
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Presence'
+      responses:
+        200:
+          description: OK
+
+  # G - Statistiques collectivite
+  /collectivites/{id}/statistiques:
+    get:
+      summary: Stats collectivite
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatistiqueCollectivite'
+
+  /membres/{id}/statistiques:
+    get:
+      summary: Stats membre
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StatistiqueMembre'
+
+  # H - Statistiques federation
+  /federation/statistiques:
+    get:
+      summary: Rapport federation
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StatistiqueFederation'
